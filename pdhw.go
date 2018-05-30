@@ -59,6 +59,8 @@ func calculateSwapCost(labels []string, from, to *Store) int {
 	return 1
 }
 
+// 尝试从 fromList 和 toList 里面各选一个节点, 做替换, 使整体分数更好
+// fromList 和 toList 里面可以有一样的节点
 func trySwapStoreList(s *Strategy, minScorePos, minScoreVal int, regionStore *RegionStore, fromList, toList []*Store) (from, to int, ok bool) {
 	minCost := -1
 	for _, fromStore := range fromList {
@@ -80,10 +82,14 @@ func trySwapStoreList(s *Strategy, minScorePos, minScoreVal int, regionStore *Re
 			isIdxEqual := idx == minScorePos
 			isCostBetter := (minCost == -1) || cost < minCost
 
-			// 如果分数变得更好, 或者能将改问题转换成下个问题, 就直接替换
-			// 在情况没有变得更好的情况下, 只有cost更低才会采用
+			// 如果当前指标分数更高了或者满足了，则更优
+			// 在当前指标满足的情况下，如果代价更低，则更优
 			// 当然如果情况变得更差, 就不考虑了
-			if isScoreBetter || (isScoreEqual && isIdxBetter) || (isScoreEqual && isIdxEqual && isCostBetter) {
+			if (isScoreBetter && isIdxEqual) || // 当前指标分数变得更高
+				(isIdxBetter) || // 当前指标满足了, 不满足的指标到了下一个
+				(isScoreEqual && isIdxEqual && isCostBetter) || // 当前指标没满足也没编号, 但是代价变低了
+				false {
+
 				minScorePos = idx
 				minCost = cost
 				minScoreVal = score

@@ -55,18 +55,23 @@ func findFirstNegative(scores []int) (idx, score int) {
 	return len(scores), 0
 }
 
+// 尝试找到更优解
 func (s *Strategy) CheckSwap(regionStore *RegionStore) (swapOut, swapIn int, ok bool) {
 	info := CalculateStoreInfo(regionStore, NilFilter)
 	scores := s.GetScores(&info)
+
+	// 找到第一个不符合条件的指标
 	minScorePos, minScoreVal := findFirstNegative(scores)
 	if minScoreVal >= 0 {
 		return 0, 0, false
 	}
+
 	excludeFilter := NewExcludeFilter(regionStore.Region.Replicas...)
 
 	switch minScorePos {
 	case ScorePosMaxDatacenterCnt:
 		// 需要合并数据中心
+		// 找到节点数最少的两组数据中心(因为节点数可能一样, 所以是两组而不是两个)
 		var cnts []int
 		var mins [2]int
 		for _, dc := range info.Datacenters {
@@ -87,9 +92,8 @@ func (s *Strategy) CheckSwap(regionStore *RegionStore) (swapOut, swapIn int, ok 
 				toDC = append(toDC, dc)
 			}
 		}
-		if len(toDC) == 0 {
-			toDC = fromDC
-		}
+		// 确保同样最小数量的DC内部也可以相互迁移
+		toDC = append(toDC, fromDC...)
 		fromList := regionStore.Filter(NewKVsFilter(LabelDatacenter, fromDC))
 		toList := regionStore.FilterAll(Filters{
 			NewKVsFilter(LabelDatacenter, toDC), NewExcludeFilter(regionStore.Region.Replicas...),
