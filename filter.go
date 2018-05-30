@@ -17,7 +17,17 @@ type Filter interface {
 	Filter(s *Store) bool
 }
 
-func NewExcludeFilter(storeID ...int) *SimpleFilter {
+type NotFilters []Filter
+
+func (fs NotFilters) Filter(s *Store) bool {
+	return !Filters(fs).Filter(s)
+}
+
+func NewNotFilters(fs ...Filter) NotFilters {
+	return NotFilters(fs)
+}
+
+func NewExcludeFilter(storeID ...int) Filter {
 	return &SimpleFilter{ExcludeID: storeID}
 }
 
@@ -25,10 +35,15 @@ func NewKVFilter(key, value string) Filter {
 	return &SimpleFilter{Key: key, Value: value}
 }
 
+func NewKVsFilter(key string, values []string) Filter {
+	return &SimpleFilter{Key: key, Values: values}
+}
+
 type SimpleFilter struct {
 	ExcludeID []int
 	Key       string
 	Value     string
+	Values    []string
 }
 
 func (f *SimpleFilter) Filter(s *Store) bool {
@@ -40,6 +55,16 @@ func (f *SimpleFilter) Filter(s *Store) bool {
 		}
 	}
 	if f.Key != "" {
+		if len(f.Values) > 0 {
+			val := s.GetLabel(f.Key)
+			for _, n := range f.Values {
+				if n == val {
+					return false
+				}
+			}
+			return true
+		}
+
 		return s.GetLabel(f.Key) != f.Value
 	}
 	return false
